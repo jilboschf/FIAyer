@@ -1,0 +1,7 @@
+{
+  "name": "fiayer",
+  "rewrites": [
+    { "source": "/api/generate", "destination": "/api/generate.js" },
+    { "source": "/api/create-checkout-session", "destination": "/api/create-checkout-session.js" }
+  ]
+}

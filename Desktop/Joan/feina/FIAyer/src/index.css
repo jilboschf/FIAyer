@@ -1,0 +1,154 @@
+/* src/index.css — MuchoPrint Style System */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Covered+By+Your+Grace&display=swap');
+
+:root {
+  /* MuchoPrint Exact Color Palette */
+  --color-primary: #3E86C1;
+  --color-primary-hover: #2e6896;
+  --color-bg-main: #FFFFFF;
+  --color-bg-cream: #F7F0EB;
+  --color-text-dark: #061A12;
+  --color-text-body: #4D5155;
+  --color-border: #E8E2DD;
+
+  /* Typography — MuchoPrint */
+  --font-main: 'Outfit', sans-serif;
+  --font-script: 'Covered By Your Grace', cursive;
+
+  /* Border Radius — MuchoPrint */
+  --radius-btn: 5px;
+  --radius-card: 15px;
+  --radius-sm: 5px;
+
+  /* Shadows — MuchoPrint */
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.07);
+  --shadow-btn: 0 4px 14px rgba(62, 134, 193, 0.35);
+
+  /* Spacing — MuchoPrint generous whitespace */
+  --section-padding: 100px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-bg-main);
+  color: var(--color-text-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-main);
+  color: var(--color-text-dark);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+p {
+  color: var(--color-text-body);
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-main);
+  border: none;
+  background: none;
+  transition: all 0.2s ease;
+}
+
+input, textarea, select {
+  font-family: var(--font-main);
+  font-size: 0.9375rem;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-main);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234D5155' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(62, 134, 193, 0.15);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+label {
+  font-family: var(--font-main);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-text-dark);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+/* ─── Utility classes ─── */
+.script-label {
+  font-family: var(--font-script);
+  color: var(--color-primary);
+  font-size: 1.35rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.anim-fade-up {
+  animation: fadeUp 0.45s ease forwards;
+}
+
+.anim-fade-up-delay-1 {
+  opacity: 0;
+  animation: fadeUp 0.45s 0.3s ease forwards;
+}
+
+.anim-fade-up-delay-2 {
+  opacity: 0;
+  animation: fadeUp 0.45s 0.6s ease forwards;
+}
+
+.anim-spin {
+  animation: spin 0.85s linear infinite;
+}
+
+.anim-shimmer {
+  animation: shimmer 1.6s ease-in-out infinite;
+}
