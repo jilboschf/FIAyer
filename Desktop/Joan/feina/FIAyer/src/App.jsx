@@ -11,6 +11,7 @@ import Legal from './pages/Legal';
 import { useTranslation } from 'react-i18next';
 import { supabase } from "./lib/supabaseClient";
 import { useToast } from "./lib/toast.jsx";
+import { Analytics } from "@vercel/analytics/react";
 import './index.css';
 
 // Mock generateContent removed. Now using real AI via /api/generate backend.
@@ -387,6 +388,9 @@ export default function App() {
 
       {/* GDPR cookie consent banner */}
       <CookieBanner />
+
+      {/* Vercel Analytics */}
+      <Analytics />
     </div>
   );
 }
