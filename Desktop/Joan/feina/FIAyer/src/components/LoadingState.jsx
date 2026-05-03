@@ -1,13 +1,16 @@
 import React from 'react';
 import { Loader2, Type, Layout, Palette } from 'lucide-react';
-
-const steps = [
-  { icon: Type,    text: 'Redactando copy persuasivo…' },
-  { icon: Layout,  text: 'Estructurando composición…' },
-  { icon: Palette, text: 'Aplicando paleta y estilo…' },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function LoadingState() {
+  const { t } = useTranslation();
+
+  const steps = [
+    { icon: Type,    text: t('loading.step1') },
+    { icon: Layout,  text: t('loading.step2') },
+    { icon: Palette, text: t('loading.step3') },
+  ];
+
   return (
     <div style={{
       display: 'flex',
@@ -29,7 +32,7 @@ export default function LoadingState() {
       </div>
 
       <span className="script-label" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-        FIAyer trabajando para ti
+        {t('loading.eyebrow')}
       </span>
       <h3 style={{
         fontSize: '1.375rem',
@@ -38,7 +41,7 @@ export default function LoadingState() {
         marginBottom: '2.5rem',
         letterSpacing: '-0.02em'
       }}>
-        Generando tu diseño…
+        {t('loading.title')}
       </h3>
 
       {/* Steps */}

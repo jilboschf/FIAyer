@@ -1,7 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Printer, FileImage, FileText, Pencil, Check, Plus, Trash2, Upload, Crown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../lib/toast.jsx';
 
 /* ─── Color themes ─── */
 const themeMap = {
@@ -16,6 +18,9 @@ const styleFont = {
   elegant:   { heading: 700, sub: 300, family: '"Covered By Your Grace", cursive' },
   creative:  { heading: 800, sub: 500, family: 'Outfit, sans-serif' },
   corporate: { heading: 700, sub: 400, family: 'Outfit, sans-serif' },
+  luxury:    { heading: 800, sub: 400, family: 'Outfit, sans-serif' },
+  minimal:   { heading: 700, sub: 400, family: 'Outfit, sans-serif' },
+  bold:      { heading: 900, sub: 500, family: 'Outfit, sans-serif' },
 };
 
 /* ─── Editable text field ─── */
@@ -72,11 +77,10 @@ function EmptyState() {
   );
 }
 
-import { useTranslation } from 'react-i18next';
-
 /* ─── Main component ─── */
-export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequireAuth, onRequirePricing, onConsumeCredit }) {
+export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, plan, onRequireAuth, onRequirePricing, onCreditsUpdated }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const flyerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [editMode, setEditMode] = useState(false);
@@ -86,7 +90,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
   const [content, setContent] = useState(null);
 
   // Sync content when new data arrives (new generation)
-  React.useEffect(() => {
+  useEffect(() => {
     if (data?.generated) {
       setContent({ ...data.generated });
       setEditMode(false);
@@ -99,36 +103,96 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
   const font   = styleFont[data.style] ?? styleFont.modern;
   const isElegant = data.style === 'elegant';
 
-  const captureCanvas = () =>
-    html2canvas(flyerRef.current, { scale: 3, useCORS: true });
-
   const handleDownload = async (format) => {
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       onRequireAuth();
       return;
     }
-    
-    if (credits <= 0) {
+
+    // Freemium: only JPG export
+    if (plan === 'free' && format !== 'jpg') {
       onRequirePricing();
       return;
     }
 
-    // Deduct credit
-    onConsumeCredit();
+    // Consume credit server-side (premium does not consume)
+    try {
+      const { supabase } = await import('../lib/supabaseClient'); // ← ruta corregida
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data?.session?.access_token;
+      if (!accessToken) {
+        onRequireAuth();
+        return;
+      }
 
-    const canvas = await captureCanvas();
-    if (format === 'png') {
-      const link = document.createElement('a');
-      link.download = 'fiayer-flyer.png';
-      link.href = canvas.toDataURL('image/png', 1.0);
-      link.click();
-    } else if (format === 'pdf') {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const w = pdf.internal.pageSize.getWidth();
-      const h = (canvas.height * w) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-      pdf.save('fiayer-flyer.pdf');
+      const resp = await fetch('/api/consume-credit', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (resp.status === 402) {
+        onRequirePricing();
+        return;
+      }
+      if (!resp.ok) {
+        toast.error(t('preview.errValidate'));
+        return;
+      }
+      const next = await resp.json();
+      onCreditsUpdated?.(next);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('preview.errConn'));
+      return;
+    }
+
+    // Prepare for capture: temporary hide shadows and rounding for a clean print result
+    const el = flyerRef.current;
+    const originalShadow = el.style.boxShadow;
+    const originalRadius = el.style.borderRadius;
+    
+    el.style.boxShadow = 'none';
+    el.style.borderRadius = '0';
+
+    try {
+      const canvas = await html2canvas(el, { 
+        scale: 4, // High resolution for print
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      if (format === 'jpg') {
+        const link = document.createElement('a');
+        link.download = `todoflyer-flyer-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.82);
+        link.click();
+      } else if (format === 'png') {
+        const link = document.createElement('a');
+        link.download = `todoflyer-flyer-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+      } else if (format === 'pdf') {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({ 
+          orientation: 'portrait', 
+          unit: 'mm', 
+          format: 'a4' 
+        });
+        
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+        pdf.save(`todoflyer-flyer-${Date.now()}.pdf`);
+      }
+    } catch (err) {
+      console.error("Export error:", err);
+      toast.error(t('preview.errExport'));
+    } finally {
+      // Restore styles
+      el.style.boxShadow = originalShadow;
+      el.style.borderRadius = originalRadius;
     }
   };
 
@@ -139,7 +203,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
   };
 
   const addPoint = () => {
-    setContent(c => ({ ...c, points: [...c.points, 'Nueva ventaja del servicio'] }));
+    setContent(c => ({ ...c, points: [...c.points, t('preview.defaultPoint')] }));
   };
 
   const removePoint = (index) => {
@@ -150,9 +214,18 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      setUploadedLogo(url);
+      setUploadedLogo(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (uploadedLogo) URL.revokeObjectURL(uploadedLogo);
+    };
+  }, [uploadedLogo]);
 
   const triggerLogoUpload = () => {
     if (plan !== 'premium') {
@@ -214,27 +287,27 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
 
           <button
             onClick={() => setEditMode(e => !e)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.45rem 1rem',
-            borderRadius: 'var(--radius-btn)',
-            border: `1.5px solid ${editMode ? '#059669' : 'var(--color-primary)'}`,
-            backgroundColor: editMode ? '#059669' : 'transparent',
-            color: editMode ? '#fff' : 'var(--color-primary)',
-            fontWeight: 600,
-            fontSize: '0.8125rem',
-            letterSpacing: '0.02em',
-            cursor: 'pointer',
-            transition: 'all 0.18s ease'
-          }}
-        >
-          {editMode
-            ? <><Check size={14} strokeWidth={2.5} /> {t('preview.saveMode')}</>
-            : <><Pencil size={14} strokeWidth={2.5} /> {t('preview.editMode')}</>
-          }
-        </button>
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.45rem 1rem',
+              borderRadius: 'var(--radius-btn)',
+              border: `1.5px solid ${editMode ? '#059669' : 'var(--color-primary)'}`,
+              backgroundColor: editMode ? '#059669' : 'transparent',
+              color: editMode ? '#fff' : 'var(--color-primary)',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              letterSpacing: '0.02em',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease'
+            }}
+          >
+            {editMode
+              ? <><Check size={14} strokeWidth={2.5} /> {t('preview.saveMode')}</>
+              : <><Pencil size={14} strokeWidth={2.5} /> {t('preview.editMode')}</>
+            }
+          </button>
         </div>
       </div>
 
@@ -282,8 +355,8 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
             position: 'relative'
           }}
         >
-          {/* ── Watermark (Guest Mode) ── */}
-          {!isLoggedIn && (
+          {/* ── Watermark ── */}
+          {(plan === 'free' || (plan === 'pack' && (credits ?? 0) <= 0)) && (
             <div style={{
               position: 'absolute',
               top: 0,
@@ -356,7 +429,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
               display: 'block',
               marginBottom: '0.5rem'
             }}>
-              FIAyer te lo pone fácil
+              {t('preview.scriptAccent')}
             </span>
 
             {/* Headline */}
@@ -516,7 +589,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
                 }}
               />
               <p style={{ fontSize: '0.8rem', color: '#4D5155', fontWeight: 400 }}>
-                fiayer.com · Tu impresora de confianza
+                {t('preview.trustTag')}
               </p>
             </div>
           </div>
@@ -526,7 +599,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
       {/* ── Export Controls ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
+        gridTemplateColumns: plan === 'free' ? '1fr' : '1fr 1fr 1fr',
         gap: '1rem',
         padding: '1.25rem',
         backgroundColor: 'var(--color-bg-main)',
@@ -534,6 +607,25 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
         border: '1px solid var(--color-border)',
         boxShadow: 'var(--shadow-card)'
       }}>
+        <button
+          onClick={() => handleDownload('jpg')}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', padding: '0.75rem 1rem',
+            backgroundColor: 'var(--color-bg-cream)',
+            color: 'var(--color-text-dark)',
+            borderRadius: 'var(--radius-btn)',
+            fontWeight: 700, fontSize: '0.875rem',
+            border: '1.5px solid var(--color-border)',
+            cursor: 'pointer', transition: 'background-color 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#efe6e0'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-bg-cream)'}
+        >
+          <FileImage size={16} strokeWidth={2.5} /> {t('preview.downJpg')}
+        </button>
+
+        {plan !== 'free' && (
         <button
           onClick={() => handleDownload('png')}
           style={{
@@ -551,6 +643,9 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
         >
           <FileImage size={16} strokeWidth={2.5} /> {t('preview.downPng')}
         </button>
+        )}
+
+        {plan !== 'free' && (
         <button
           onClick={() => handleDownload('pdf')}
           style={{
@@ -568,6 +663,7 @@ export default function FlyerPreview({ data, isLoggedIn, credits, plan, onRequir
         >
           <FileText size={16} strokeWidth={2.5} /> {t('preview.downPdf')}
         </button>
+        )}
       </div>
     </div>
   );

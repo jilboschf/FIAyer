@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { TEMPLATES } from './TemplateSelector';
+import { useTemplates } from './TemplateSelector';
 import { useTranslation } from 'react-i18next';
 
 export default function HeroPrompt({ onGo }) {
   const { t } = useTranslation();
+  const templates = useTemplates();
   const [prompt, setPrompt] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -142,7 +143,7 @@ export default function HeroPrompt({ onGo }) {
         {/* Template Shortcuts */}
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-body)', marginBottom: '1.25rem' }}>
-            O comença ràpidament amb una plantilla:
+            {t('hero.orTemplate')}
           </p>
           <div style={{
             display: 'flex',
@@ -150,7 +151,7 @@ export default function HeroPrompt({ onGo }) {
             justifyContent: 'center',
             gap: '0.875rem'
           }}>
-            {TEMPLATES.map((tpl) => {
+            {templates.map((tpl) => {
               if (tpl.id === 'custom') return null; // No need for "custom" shortcut here
               const Icon = tpl.icon;
               return (

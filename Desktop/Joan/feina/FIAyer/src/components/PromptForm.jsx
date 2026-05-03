@@ -1,26 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Sparkles, Palette, Users, LayoutTemplate } from 'lucide-react';
-import TemplateSelector, { TEMPLATES } from './TemplateSelector';
+import { useTranslation } from 'react-i18next';
+import TemplateSelector, { useTemplates } from './TemplateSelector';
 
-const OPTIONS_STYLE = [
-  { value: 'modern',    label: 'Moderno y limpio' },
-  { value: 'elegant',   label: 'Elegante (Premium)' },
-  { value: 'creative',  label: 'Creativo y llamativo' },
-  { value: 'corporate', label: 'Corporativo / B2B' },
-];
-
-const OPTIONS_AUDIENCE = [
-  { value: 'general',   label: 'Público general' },
-  { value: 'students',  label: 'Estudiantes / Universitarios' },
-  { value: 'companies', label: 'Empresas / Pymes' },
-];
-
-const OPTIONS_COLOR = [
-  { value: 'auto',    label: 'Automático (IA decide)' },
-  { value: 'brand',   label: 'Corporativo FIAyer' },
-  { value: 'vibrant', label: 'Vibrante y energético' },
-  { value: 'pastel',  label: 'Tonos pastel / suaves' },
-];
+/* ─── Option value lists (labels come from i18n) ─── */
+const STYLE_VALUES_BASE    = ['modern', 'creative', 'corporate'];
+const STYLE_VALUES_PREMIUM = ['elegant', 'luxury', 'minimal', 'bold'];
+const AUDIENCE_VALUES      = ['general', 'students', 'companies'];
+const COLOR_VALUES         = ['auto', 'brand', 'vibrant', 'pastel'];
 
 function SelectRow({ label, icon: Icon, value, onChange, options, disabled }) {
   return (
@@ -30,23 +17,53 @@ function SelectRow({ label, icon: Icon, value, onChange, options, disabled }) {
         {label}
       </label>
       <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {options.map(o => (
+          <option key={o.value} value={o.value} disabled={Boolean(o.disabled)}>
+            {o.label}
+          </option>
+        ))}
       </select>
     </div>
   );
 }
 
-export default function PromptForm({ onSubmit, isLoading, initialData }) {
+export default function PromptForm({ onSubmit, isLoading, initialData, plan = 'free' }) {
+  const { t } = useTranslation();
+  const templates = useTemplates();
+
   const [selectedTemplate, setSelectedTemplate] = useState(initialData?.templateId || 'custom');
   const [prompt, setPrompt] = useState(initialData?.prompt || '');
   const [style, setStyle] = useState(initialData?.style || 'modern');
   const [audience, setAudience] = useState(initialData?.audience || 'general');
   const [colorTheme, setColorTheme] = useState(initialData?.colorTheme || 'auto');
+  const [brief, setBrief] = useState('');
+
+  /* Build translated option lists. Premium styles stay visible but
+     disabled for non-premium users, so they can see the upsell. */
+  const styleOptions = useMemo(() => {
+    const base    = STYLE_VALUES_BASE.map(v => ({ value: v, label: t(`options.style.${v}`) }));
+    const premium = STYLE_VALUES_PREMIUM.map(v => ({
+      value: v,
+      label: t(`options.style.${v}`),
+      disabled: plan !== 'premium',
+    }));
+    return [...base, ...premium];
+  }, [plan, t]);
+
+  const audienceOptions = useMemo(
+    () => AUDIENCE_VALUES.map(v => ({ value: v, label: t(`options.audience.${v}`) })),
+    [t]
+  );
+
+  const colorOptions = useMemo(
+    () => COLOR_VALUES.map(v => ({ value: v, label: t(`options.color.${v}`) })),
+    [t]
+  );
 
   // Auto-fill form when a template is selected
   const handleTemplateSelect = (id) => {
     setSelectedTemplate(id);
-    const tpl = TEMPLATES.find(t => t.id === id);
+    const tpl = templates.find(x => x.id === id);
     if (tpl?.preset) {
       setPrompt(tpl.preset.prompt);
       setStyle(tpl.preset.style);
@@ -64,7 +81,14 @@ export default function PromptForm({ onSubmit, isLoading, initialData }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
-    onSubmit({ prompt, style, audience, colorTheme, templateId: selectedTemplate });
+    onSubmit({
+      prompt,
+      style,
+      audience,
+      colorTheme,
+      templateId: selectedTemplate,
+      brief: plan === 'premium' ? brief : '',
+    });
   };
 
   const canSubmit = prompt.trim() && !isLoading;
@@ -82,7 +106,7 @@ export default function PromptForm({ onSubmit, isLoading, initialData }) {
     }}>
       {/* Section header */}
       <div style={{ marginBottom: '1.75rem' }}>
-        <span className="script-label">FIAyer, tu diseñador IA</span>
+        <span className="script-label">{t('form.eyebrow')}</span>
         <h2 style={{
           fontSize: '1.75rem',
           fontWeight: 800,
@@ -90,10 +114,10 @@ export default function PromptForm({ onSubmit, isLoading, initialData }) {
           lineHeight: 1.15,
           marginBottom: '0.4rem'
         }}>
-          Crea tu Flyer con IA
+          {t('form.title')}
         </h2>
         <p style={{ fontSize: '0.875rem', color: 'var(--color-text-body)' }}>
-          Elige una plantilla o describe tu idea y obtén un diseño listo para imprimir.
+          {t('form.subtitle')}
         </p>
       </div>
 
@@ -108,43 +132,60 @@ export default function PromptForm({ onSubmit, isLoading, initialData }) {
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Sparkles size={14} color="var(--color-primary)" strokeWidth={2.5} />
-            Describe tu idea
+            {t('form.ideaLabel')}
           </label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ej: Oferta especial en impresión de tesis y proyectos universitarios. Descuento del 20% presentando el carnet..."
+            placeholder={t('form.ideaPlaceholder')}
             rows={4}
             disabled={isLoading}
             required
           />
         </div>
 
+        {/* Premium brief */}
+        {plan === 'premium' && (
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Sparkles size={14} color="var(--color-primary)" strokeWidth={2.5} />
+              {t('form.briefLabel')}
+            </label>
+            <textarea
+              value={brief}
+              onChange={(e) => setBrief(e.target.value)}
+              placeholder={t('form.briefPlaceholder')}
+              rows={3}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+
         {/* Options grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <SelectRow
-            label="Estilo visual"
+            label={t('form.styleLabel')}
             icon={LayoutTemplate}
             value={style}
             onChange={setStyle}
-            options={OPTIONS_STYLE}
+            options={styleOptions}
             disabled={isLoading}
           />
           <SelectRow
-            label="Público objetivo"
+            label={t('form.audienceLabel')}
             icon={Users}
             value={audience}
             onChange={setAudience}
-            options={OPTIONS_AUDIENCE}
+            options={audienceOptions}
             disabled={isLoading}
           />
         </div>
         <SelectRow
-          label="Paleta de colores"
+          label={t('form.colorLabel')}
           icon={Palette}
           value={colorTheme}
           onChange={setColorTheme}
-          options={OPTIONS_COLOR}
+          options={colorOptions}
           disabled={isLoading}
         />
 
@@ -178,12 +219,12 @@ export default function PromptForm({ onSubmit, isLoading, initialData }) {
               <span className="anim-spin" style={{ display: 'flex' }}>
                 <Sparkles size={17} strokeWidth={2.5} />
               </span>
-              Generando diseño…
+              {t('form.submittingBtn')}
             </>
           ) : (
             <>
               <Sparkles size={17} strokeWidth={2.5} />
-              Generar Flyer con IA
+              {t('form.submitBtn')}
             </>
           )}
         </button>

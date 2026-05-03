@@ -12,7 +12,7 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
   };
 
   return (
-    <header style={{
+    <header className="todoflyer-header" style={{
       backgroundColor: 'var(--color-bg-main)',
       borderBottom: '1px solid var(--color-border)',
       padding: '1rem 2.5rem',
@@ -38,7 +38,7 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
         }}>
           <Layers size={18} strokeWidth={2.5} />
         </div>
-        <span style={{
+        <span translate="no" className="notranslate" style={{
           fontFamily: 'var(--font-main)',
           fontWeight: 800,
           fontSize: '1.25rem',
@@ -49,7 +49,7 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
       </div>
 
       {/* Nav */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+      <nav className="todoflyer-header-nav" style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
         
         <button 
           onClick={toggleLanguage}
@@ -63,7 +63,7 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
           <Globe size={14} /> {i18n.language.split('-')[0] || t('header.lang')}
         </button>
 
-        <button style={{
+        <button className="todoflyer-header-help" style={{
           background: 'none', border: 'none', cursor: 'pointer',
           color: 'var(--color-text-body)',
           fontWeight: 500,
@@ -123,8 +123,9 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
             </div>
           </div>
         ) : (
-          <button 
+          <button
             onClick={onLoginClick}
+            className="todoflyer-header-login"
             style={{
               backgroundColor: 'var(--color-primary)',
               color: '#fff',

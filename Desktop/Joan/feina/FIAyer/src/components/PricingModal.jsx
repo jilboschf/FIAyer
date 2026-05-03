@@ -1,33 +1,44 @@
 import React, { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../lib/toast.jsx';
 
 // Removing hardcoded PLANS array from global scope
 // It will be generated inside the component so it has access to `t()`
 
 export default function PricingModal({ isOpen, onClose, onPurchase }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState(null);
 
   const handleStripeCheckout = async (plan) => {
     setLoadingPlan(plan.id);
     try {
+      // Ensure the request includes the Supabase JWT (so backend can link purchase to userId)
+      const { supabase } = await import('../lib/supabaseClient');
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data?.session?.access_token;
+      if (!accessToken) {
+        toast.warning(t('pricing.mustLoginFirst'));
+        setLoadingPlan(null);
+        return;
+      }
+
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          planId: plan.id,
-          origin: window.location.origin
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          planId: plan.id
         }),
       });
 
       if (!response.ok) throw new Error('Failed to create checkout session');
-      
+
       const { url } = await response.json();
       window.location.href = url; // Redirect to Stripe
     } catch (err) {
       console.error(err);
-      alert("Error connectant amb Stripe. Revisa la teva STRIPE_SECRET_KEY.");
+      toast.error(t('pricing.stripeError'));
       setLoadingPlan(null);
     }
   };
@@ -66,7 +77,7 @@ export default function PricingModal({ isOpen, onClose, onPurchase }) {
     {
       id: 'premium',
       name: t('pricing.premium.name'),
-      price: `39${t('pricing.currency')}`,
+      price: `35${t('pricing.currency')}`,
       freq: t('pricing.premium.freq'),
       desc: t('pricing.premium.desc'),
       features: [t('pricing.premium.feat1'), t('pricing.premium.feat2'), t('pricing.premium.feat3'), t('pricing.premium.feat4')],

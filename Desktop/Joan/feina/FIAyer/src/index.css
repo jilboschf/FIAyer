@@ -152,3 +152,85 @@ label {
 .anim-shimmer {
   animation: shimmer 1.6s ease-in-out infinite;
 }
+
+/* =============================================================
+   Responsive — mobile / tablet
+   We use `!important` on overrides because the main layouts are
+   styled via inline React `style={{...}}`, which would normally
+   win over CSS. These media queries only kick in below the
+   breakpoint so they don't affect the desktop experience.
+   ============================================================= */
+
+/* Tablet and below */
+@media (max-width: 960px) {
+  .todoflyer-editor-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    padding: 1.5rem 1rem !important;
+  }
+
+  .todoflyer-preview-col {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .todoflyer-hero-tagline {
+    padding: 0.55rem 0.75rem !important;
+    font-size: 0.8rem !important;
+    line-height: 1.35 !important;
+  }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+  .todoflyer-header {
+    padding: 0.75rem 1rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .todoflyer-header-nav {
+    gap: 0.4rem !important;
+  }
+
+  /* Hide the secondary "Help" button on phones — it's not essential. */
+  .todoflyer-header-help {
+    display: none !important;
+  }
+
+  /* Compact the login / credits pill */
+  .todoflyer-header-login {
+    padding: 0.5rem 0.85rem !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.02em !important;
+    margin-left: 0 !important;
+  }
+
+  .todoflyer-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+    padding: 1.25rem 1.25rem !important;
+    text-align: left !important;
+  }
+
+  .todoflyer-footer nav {
+    flex-wrap: wrap !important;
+  }
+
+  .todoflyer-hero-card {
+    padding: 1.5rem 1rem !important;
+  }
+
+  .todoflyer-hero-title {
+    font-size: 1.75rem !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* The flyer preview itself — shrink its nominal A4 width so the
+     whole thing fits on phones. html2canvas will still capture at
+     the original resolution because we use `scale: 4` on export. */
+  .todoflyer-flyer-canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}

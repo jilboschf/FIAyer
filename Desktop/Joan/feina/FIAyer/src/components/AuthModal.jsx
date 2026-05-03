@@ -1,9 +1,58 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Mail, Sparkles, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { supabase } from "../lib/supabaseClient";
+
+// Feature flags for OAuth providers. Both default to OFF until the provider
+// is actually configured inside Supabase → Authentication → Providers.
+// Flip the flag in `.env` (and on Vercel) once the provider works end-to-end:
+//   VITE_AUTH_APPLE_ENABLED=true
+//   VITE_AUTH_GOOGLE_ENABLED=true
+const APPLE_ENABLED = import.meta.env.VITE_AUTH_APPLE_ENABLED === 'true';
+const GOOGLE_ENABLED = import.meta.env.VITE_AUTH_GOOGLE_ENABLED === 'true';
+const ANY_OAUTH_ENABLED = APPLE_ENABLED || GOOGLE_ENABLED;
 
 export default function AuthModal({ isOpen, onClose, onLogin }) {
   const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [errorMsg, setErrorMsg] = useState('');
+  const [oauthLoading, setOauthLoading] = useState(null); // 'apple' | 'google' | null
+
+  const canSend = useMemo(() => email.trim().includes('@') && status !== 'sending', [email, status]);
+
+  const sendMagicLink = async () => {
+    setStatus('sending');
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      setStatus('sent');
+    } catch (e) {
+      setStatus('error');
+      setErrorMsg(e?.message || t('auth.genericError'));
+    }
+  };
+
+  const signInWithOAuth = async (provider) => {
+    setOauthLoading(provider);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      // Supabase redirects the user away; nothing else to do here.
+    } catch (e) {
+      setOauthLoading(null);
+      setStatus('error');
+      setErrorMsg(e?.message || t('auth.genericError'));
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -31,7 +80,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
         animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         {/* Close button */}
-        <button 
+        <button
           onClick={onClose}
           style={{
             position: 'absolute',
@@ -56,10 +105,10 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
 
         {/* Modal content */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ 
-            width: '48px', 
-            height: '48px', 
-            backgroundColor: 'rgba(62, 134, 193, 0.1)', 
+          <div style={{
+            width: '48px',
+            height: '48px',
+            backgroundColor: 'rgba(62, 134, 193, 0.1)',
             color: 'var(--color-primary)',
             borderRadius: '16px',
             display: 'flex',
@@ -78,7 +127,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
           }}>
             {t('auth.title')}
           </h2>
-          <p 
+          <p
             style={{ fontSize: '0.925rem', color: 'var(--color-text-body)', lineHeight: 1.5 }}
             dangerouslySetInnerHTML={{ __html: t('auth.desc').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
           />
@@ -86,62 +135,112 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
 
         {/* Auth options */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          <button
-            onClick={() => onLogin('apple')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              backgroundColor: '#000000',
-              color: '#ffffff',
-              padding: '0.875rem',
-              borderRadius: '12px',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              cursor: 'pointer',
-              border: '1px solid #000000',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          >
-             {t('auth.apple')}
-          </button>
-          
-          <button
-            onClick={() => onLogin('google')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              backgroundColor: '#ffffff',
-              color: '#3c4043',
-              padding: '0.875rem',
-              borderRadius: '12px',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              cursor: 'pointer',
-              border: '1px solid #dadce0',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
-          >
-            G {t('auth.google')}
-          </button>
+          {APPLE_ENABLED && (
+            <button
+              onClick={() => signInWithOAuth('apple')}
+              disabled={oauthLoading !== null}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                padding: '0.875rem',
+                borderRadius: '12px',
+                fontWeight: 600,
+                fontSize: '0.9375rem',
+                cursor: oauthLoading ? 'not-allowed' : 'pointer',
+                opacity: oauthLoading && oauthLoading !== 'apple' ? 0.6 : 1,
+                border: '1px solid #000000',
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => { if (!oauthLoading) e.currentTarget.style.opacity = '0.85'; }}
+              onMouseLeave={e => { if (!oauthLoading) e.currentTarget.style.opacity = '1'; }}
+            >
+              {oauthLoading === 'apple' ? t('auth.sending') : t('auth.apple')}
+            </button>
+          )}
 
-          <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0' }}>
-            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-body)', padding: '0 1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>o</span>
-            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }} />
+          {GOOGLE_ENABLED && (
+            <button
+              onClick={() => signInWithOAuth('google')}
+              disabled={oauthLoading !== null}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                backgroundColor: '#ffffff',
+                color: '#3c4043',
+                padding: '0.875rem',
+                borderRadius: '12px',
+                fontWeight: 600,
+                fontSize: '0.9375rem',
+                cursor: oauthLoading ? 'not-allowed' : 'pointer',
+                opacity: oauthLoading && oauthLoading !== 'google' ? 0.6 : 1,
+                border: '1px solid #dadce0',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={e => { if (!oauthLoading) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
+              onMouseLeave={e => { if (!oauthLoading) e.currentTarget.style.backgroundColor = '#ffffff'; }}
+            >
+              G {oauthLoading === 'google' ? t('auth.sending') : t('auth.google')}
+            </button>
+          )}
+
+          {ANY_OAUTH_ENABLED && (
+            <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }} />
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-body)', padding: '0 1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>o</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <label style={{ fontSize: '0.8rem' }}>{t('auth.email')}</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth.emailPlaceholder')}
+              style={{ width: '100%' }}
+              autoComplete="email"
+            />
+            <button
+              onClick={sendMagicLink}
+              disabled={!canSend}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                backgroundColor: canSend ? 'var(--color-primary)' : '#B0C8DE',
+                color: '#ffffff',
+                padding: '0.875rem',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.9375rem',
+                cursor: canSend ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <Mail size={18} /> {status === 'sending' ? t('auth.sending') : t('auth.sendMagic')}
+            </button>
+            {status === 'sent' && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-body)' }}>
+                {t('auth.sentCheckEmail')}
+              </p>
+            )}
+            {status === 'error' && (
+              <p style={{ fontSize: '0.85rem', color: '#b91c1c' }}>{errorMsg}</p>
+            )}
           </div>
 
           <button
-            onClick={() => onLogin('email')}
+            onClick={() => onLogin?.('email')}
             style={{
               width: '100%',
               display: 'flex',
@@ -165,7 +264,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
                e.currentTarget.style.borderColor = 'var(--color-border)';
             }}
           >
-            <Mail size={18} /> {t('auth.email')}
+            <Mail size={18} /> {t('auth.haveSession')}
           </button>
         </div>
 
@@ -174,7 +273,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
         </p>
 
       </div>
-      
+
       {/* Required keyframes for modal open animation since index.css doesn't have slideUp yet */}
       <style>{`
         @keyframes fadeIn {
