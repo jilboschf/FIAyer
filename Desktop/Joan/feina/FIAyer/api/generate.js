@@ -1,10 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
-  generationConfig: { responseMimeType: "application/json" },
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "",
 });
 
 const LANG_INSTRUCTIONS = {
@@ -60,13 +58,31 @@ function checkRateLimit(userId) {
   return { limited: false };
 }
 
+function isSimilarText(text1, text2) {
+  // Simple similarity check: if texts are too similar, reject
+  const t1 = text1.toLowerCase().trim();
+  const t2 = text2.toLowerCase().trim();
+  
+  // If one contains most of the other, it's too similar
+  if (t1.includes(t2) || t2.includes(t1)) return true;
+  
+  // Count word overlap
+  const words1 = new Set(t1.split(/\s+/));
+  const words2 = new Set(t2.split(/\s+/));
+  const overlap = [...words1].filter(w => words2.has(w)).length;
+  const totalWords = Math.max(words1.size, words2.size);
+  
+  // If more than 70% of words match, too similar
+  return overlap / totalWords > 0.7;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({ error: 'Missing GEMINI_API_KEY on the server' });
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'Missing OPENAI_API_KEY on the server' });
   }
 
   /* 1. Authentication ------------------------------------------------- */
@@ -113,48 +129,91 @@ COLOR PREFERENCE: ${colorTheme || 'auto'}
 
 Return ONLY a valid JSON object with this EXACT structure (no markdown, no commentary):
 {
-  "title": "short punchy headline (max 8 words)",
-  "subtitle": "one-sentence value proposition (max 18 words)",
-  "points": ["benefit 1", "benefit 2", "benefit 3"],
+  "title": "creative marketing headline COMPLETELY DIFFERENT from the user request (max 8 words)",
+  "subtitle": "compelling one-sentence benefit (max 18 words)",
+  "points": ["benefit 1 (max 10 words)", "benefit 2 (max 10 words)", "benefit 3 (max 10 words)"],
   "cta": "strong call to action (max 6 words)",
   "style": "${style || 'modern'}",
   "colorTheme": "${colorTheme || 'brand'}"
 }
 
+Example with user input "Creame una invitacion a una fiesta de aniversario de 18 años":
+{"title":"Celebra en Grande","subtitle":"La fiesta que recordarán por siempre","points":["Invitación profesional","Sorprenderá a tus invitados","Memorable y elegante"],"cta":"Invita Ahora","style":"${style || 'modern'}","colorTheme":"${colorTheme || 'brand'}"}
+
+⚠️ FORBIDDEN TITLE PATTERNS:
+- If user said "Creame una invitacion..." the title CANNOT be "Creame una invitacion..."
+- Do NOT echo back the user's request words
+- Title must be marketing copy, not descriptive
+- Transform the idea into a creative, compelling headline
+
 RULES:
-- "points" MUST be an array of exactly 3 short benefits (max 10 words each).
-- Do NOT include the word "flyer" in any field.
+- "points" MUST be an array of exactly 3 short benefits.
 - No emojis. No hashtags. No quotation marks inside fields.
-- Copy must be professional, persuasive and ready to print.`;
+- Copy must be professional, persuasive and ready to print.
+- Keep all values in the requested language.
+- The title MUST be creative and marketable, never a repetition of the input.
 
   /* 4. Call the model ------------------------------------------------- */
   try {
-    const result = await model.generateContent(fullPrompt);
-    let text = result.response.text().trim();
+    let safe = null;
+    let attempts = 0;
+    const maxAttempts = 2;
 
-    // Defensive: strip code fences if the model ignores responseMimeType
-    if (text.startsWith('```')) {
-      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    while (attempts < maxAttempts && !safe) {
+      attempts++;
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: fullPrompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+      });
+
+      const text = response.choices[0]?.message?.content?.trim();
+      if (!text) {
+        console.error('OpenAI returned empty content');
+        if (attempts < maxAttempts) continue;
+        return res.status(502).json({ error: 'AI returned empty response' });
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error('JSON parse error. Raw model output:', text);
+        if (attempts >= maxAttempts) {
+          return res.status(502).json({ error: 'AI returned invalid JSON' });
+        }
+        continue; // Retry
+      }
+
+      const candidate = {
+        title: String(data.title || '').trim(),
+        subtitle: String(data.subtitle || '').trim(),
+        points: Array.isArray(data.points)
+          ? data.points.filter(Boolean).slice(0, 3).map((p) => String(p).trim())
+          : [],
+        cta: String(data.cta || '').trim(),
+        style: data.style || style || 'modern',
+        colorTheme: data.colorTheme || colorTheme || 'brand',
+      };
+
+      // Validate: if title is too similar to the user prompt, retry
+      if (isSimilarText(candidate.title, prompt)) {
+        console.warn(`Attempt ${attempts}: Title too similar to prompt. Title: "${candidate.title}", Prompt: "${prompt}". Retrying...`);
+        if (attempts < maxAttempts) {
+          continue; // Retry with the same prompt to get a different response
+        }
+        // If we've exhausted retries, return the candidate anyway with a fallback
+        candidate.title = `${styleHint.split(' ')[0]} ${prompt.split(' ')[0]}`.trim();
+      }
+
+      safe = candidate;
     }
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (parseErr) {
-      console.error('JSON parse error. Raw model output:', text);
-      return res.status(502).json({ error: 'AI returned invalid JSON' });
-    }
-
-    const safe = {
-      title: String(data.title || '').trim(),
-      subtitle: String(data.subtitle || '').trim(),
-      points: Array.isArray(data.points)
-        ? data.points.filter(Boolean).slice(0, 6).map((p) => String(p).trim())
-        : [],
-      cta: String(data.cta || '').trim(),
-      style: data.style || style || 'modern',
-      colorTheme: data.colorTheme || colorTheme || 'brand',
-    };
 
     return res.status(200).json(safe);
   } catch (error) {

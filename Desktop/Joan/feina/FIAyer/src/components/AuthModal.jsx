@@ -11,15 +11,21 @@ import { supabase } from "../lib/supabaseClient";
 const APPLE_ENABLED = import.meta.env.VITE_AUTH_APPLE_ENABLED === 'true';
 const GOOGLE_ENABLED = import.meta.env.VITE_AUTH_GOOGLE_ENABLED === 'true';
 const ANY_OAUTH_ENABLED = APPLE_ENABLED || GOOGLE_ENABLED;
+const DEFAULT_APP_URL = 'https://fiayer-project-oficial-fia-yer.vercel.app';
+const APP_URL = import.meta.env.VITE_APP_URL || ((typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) ? DEFAULT_APP_URL : window.location.origin);
 
 export default function AuthModal({ isOpen, onClose, onLogin }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authMode, setAuthMode] = useState('magic'); // 'magic' | 'password'
+  const [isSignup, setIsSignup] = useState(false);
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState('');
   const [oauthLoading, setOauthLoading] = useState(null); // 'apple' | 'google' | null
 
   const canSend = useMemo(() => email.trim().includes('@') && status !== 'sending', [email, status]);
+  const canPassword = useMemo(() => email.trim().includes('@') && password.length >= 8 && status !== 'sending', [email, password, status]);
 
   const sendMagicLink = async () => {
     setStatus('sending');
@@ -27,9 +33,28 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: APP_URL },
       });
       if (error) throw error;
+      setStatus('sent');
+    } catch (e) {
+      setStatus('error');
+      setErrorMsg(e?.message || t('auth.genericError'));
+    }
+  };
+
+  const handlePasswordAuth = async () => {
+    setStatus('sending');
+    setErrorMsg('');
+    try {
+      const emailAddress = email.trim();
+      let result;
+      if (isSignup) {
+        result = await supabase.auth.signUp({ email: emailAddress, password });
+      } else {
+        result = await supabase.auth.signInWithPassword({ email: emailAddress, password });
+      }
+      if (result.error) throw result.error;
       setStatus('sent');
     } catch (e) {
       setStatus('error');
@@ -43,12 +68,47 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: APP_URL },
       });
       if (error) throw error;
       // Supabase redirects the user away; nothing else to do here.
     } catch (e) {
       setOauthLoading(null);
+      setStatus('error');
+      setErrorMsg(e?.message || t('auth.genericError'));
+    }
+  };
+
+  const loginWithTestAdmin = async () => {
+    setStatus('sending');
+    setErrorMsg('');
+    const testEmail = 'admin@todoflyer.test';
+    const testPassword = 'Admin1234';
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword,
+      });
+
+      if (signInError) {
+        const isMissingUser = /user not found|invalid login credentials|password is invalid/i.test(signInError.message);
+        if (isMissingUser) {
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: testEmail,
+            password: testPassword,
+          });
+          if (signUpError) throw signUpError;
+          setStatus('sent');
+          onClose?.();
+          return;
+        }
+        throw signInError;
+      }
+
+      setStatus('sent');
+      onClose?.();
+    } catch (e) {
       setStatus('error');
       setErrorMsg(e?.message || t('auth.genericError'));
     }
@@ -191,6 +251,30 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
             </button>
           )}
 
+          <button
+            onClick={loginWithTestAdmin}
+            disabled={status === 'sending' || oauthLoading !== null}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              backgroundColor: '#0f766e',
+              color: '#ffffff',
+              padding: '0.875rem',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '0.9375rem',
+              cursor: status === 'sending' || oauthLoading ? 'not-allowed' : 'pointer',
+              border: '1px solid transparent',
+              transition: 'opacity 0.2s',
+              opacity: status === 'sending' || oauthLoading ? 0.6 : 1,
+            }}
+          >
+            {status === 'sending' ? t('auth.sending') : 'Entrar amb compte de prova'}
+          </button>
+
           {ANY_OAUTH_ENABLED && (
             <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0' }}>
               <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }} />
@@ -238,6 +322,95 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
               <p style={{ fontSize: '0.85rem', color: '#b91c1c' }}>{errorMsg}</p>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode(authMode === 'magic' ? 'password' : 'magic');
+              setStatus('idle');
+              setErrorMsg('');
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              backgroundColor: 'transparent',
+              color: 'var(--color-text-dark)',
+              padding: '0.875rem',
+              borderRadius: '12px',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              cursor: 'pointer',
+              border: '1.5px solid var(--color-border)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => {
+               e.currentTarget.style.borderColor = 'var(--color-text-dark)';
+            }}
+            onMouseLeave={e => {
+               e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
+          >
+            <Mail size={18} /> {authMode === 'magic' ? 'Accés amb contrasenya' : 'Tornar a enllaç màgic'}
+          </button>
+
+          {authMode === 'password' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <label style={{ fontSize: '0.8rem' }}>Contrasenya</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Escriu una contrasenya (min. 8 caràcters)"
+                style={{ width: '100%' }}
+                autoComplete="current-password"
+              />
+              <button
+                onClick={handlePasswordAuth}
+                disabled={!canPassword}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.75rem',
+                  backgroundColor: canPassword ? 'var(--color-primary)' : '#B0C8DE',
+                  color: '#ffffff',
+                  padding: '0.875rem',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.9375rem',
+                  cursor: canPassword ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {isSignup ? 'Crear compte' : 'Iniciar sessió'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setStatus('idle');
+                  setErrorMsg('');
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: 'transparent',
+                  color: 'var(--color-text-dark)',
+                  padding: '0.875rem',
+                  borderRadius: '12px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: 'pointer',
+                  border: '1.5px solid var(--color-border)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {isSignup ? 'Ja tens compte? Inicia sessió' : 'Crear un compte nou'}
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => onLogin?.('email')}

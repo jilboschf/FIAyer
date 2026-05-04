@@ -1,20 +1,20 @@
-# Handover FIAyer / todoflyer.es — Guía para el webmaster
+# Handover FIAyer / todoflayer.es — Guía para el webmaster
 
 Este documento recoge **todo lo que hay que hacer fuera del código** para publicar el sitio. El código ya está preparado; lo que queda es configuración de servicios externos, DNS, secretos y validación.
 
-**Dominio:** `todoflyer.es` · **Stack:** Vite + React 19 desplegado en Vercel, Supabase (auth + DB), Stripe (pagos), Google Gemini 2.0 Flash (IA).
+**Dominio:** `todoflayer.es` · **Stack:** Vite + React 19 desplegado en Vercel, Supabase (auth + DB), Stripe (pagos), Google Gemini 2.0 Flash (IA).
 
 ---
 
 ## 1. DNS y dominio (Vercel)
 
-1. En el panel de tu registrador de dominio (el que te vendió `todoflyer.es`), crear los registros:
+1. En el panel de tu registrador de dominio (el que te vendió `todoflayer.es`), crear los registros:
    - `A` `@` → `76.76.21.21`
    - `CNAME` `www` → `cname.vercel-dns.com`
    (Los valores exactos los da Vercel al añadir el dominio; usa los que muestre el panel.)
-2. En **Vercel → Project → Settings → Domains**, añadir `todoflyer.es` y `www.todoflyer.es`. Marcar `todoflyer.es` como canónico y que `www` redirija al apex.
+2. En **Vercel → Project → Settings → Domains**, añadir `todoflayer.es` y `www.todoflayer.es`. Marcar `todoflayer.es` como canónico y que `www` redirija al apex.
 3. Esperar a que Vercel emita el certificado SSL (suele tardar < 5 min).
-4. Probar: `https://todoflyer.es` debe cargar el sitio y `http://todoflyer.es` debe redirigir a HTTPS automáticamente.
+4. Probar: `https://todoflayer.es` debe cargar el sitio y `http://todoflayer.es` debe redirigir a HTTPS automáticamente.
 
 ---
 
@@ -99,10 +99,10 @@ create index if not exists entitlements_stripe_subscription_id_idx
 ### 3.2. Configuración de Auth (⚠️ crítico para que funcionen magic links)
 
 En **Supabase → Authentication → URL Configuration**:
-- **Site URL**: `https://todoflyer.es`
+- **Site URL**: `https://todoflayer.es`
 - **Redirect URLs** (añadir todos):
-  - `https://todoflyer.es/**`
-  - `https://www.todoflyer.es/**`
+  - `https://todoflayer.es/**`
+  - `https://www.todoflayer.es/**`
   - `http://localhost:5173/**` (para desarrollo local)
 
 Sin esto los magic links de email apuntarán a la URL anterior y no funcionarán.
@@ -127,7 +127,7 @@ Copiar el `price_id` (empieza por `price_...`) de cada uno y ponerlo en las vari
 ### 4.2. Webhook
 
 En **Stripe → Developers → Webhooks → Add endpoint**:
-- **Endpoint URL**: `https://todoflyer.es/api/stripe-webhook`
+- **Endpoint URL**: `https://todoflayer.es/api/stripe-webhook`
 - **Events to send** (los 4 son necesarios):
   - `checkout.session.completed`
   - `customer.subscription.updated`
@@ -184,10 +184,10 @@ Verificar que existe en `public/favicon.svg`. Si no, generar uno a partir del lo
 
 ### 7.1. Branding: ¿FIAyer o TodoFlyer?
 
-Tenemos una inconsistencia: la marca visual del sitio es **FIAyer** (el logo "F + IA + yer") pero el dominio es **todoflyer.es**. Ya he sustituido las referencias de URL (`fiayer.com` → `todoflyer.es`) en metatags SEO, sitemap, marca de agua del flyer y trust tags.
+Tenemos una inconsistencia: la marca visual del sitio es **FIAyer** (el logo "F + IA + yer") pero el domini és **todoflayer.es**. Ya he sustituido las referencias de URL (`fiayer.com` → `todoflayer.es`) en metatags SEO, sitemap, marca de agua del flyer y trust tags.
 
 **Decidir:**
-- Opción A — Mantener "FIAyer" como marca y solo usar todoflyer.es como URL. Los usuarios aprenden que "FIAyer vive en todoflyer.es".
+- Opción A — Mantener "FIAyer" como marca y solo usar todoflayer.es como URL. Los usuarios aprenden que "FIAyer vive en todoflayer.es".
 - Opción B — Renombrar a "TodoFlyer" completamente (cambiar logo, copys, i18n). Trabajo de medio día adicional.
 - Opción C — "TodoFlyer by FIAyer" o similar doble branding.
 
@@ -197,7 +197,7 @@ Las 3 páginas legales están creadas pero contienen **placeholders** que hay qu
 - `{{NOMBRE_COMPLETO}}` — nombre y apellidos del autónomo responsable.
 - `{{NIF}}` — NIF del autónomo.
 - `{{DIRECCION}}` — dirección fiscal.
-- Email de contacto ya está puesto como `xavicid@gmail.com` — si se quiere uno específico de la web (tipo `legal@todoflyer.es`), cambiarlo en `src/i18n.js` (claves `legal.contactEmail`).
+- Email de contacto ya está puesto como `xavicid@gmail.com` — si se quiere uno específico de la web (tipo `legal@todoflayer.es`), cambiarlo en `src/i18n.js` (claves `legal.contactEmail`).
 
 Ubicación: `src/i18n.js` (buscar `{{NOMBRE_COMPLETO}}` en los 3 idiomas ca/es/en).
 
@@ -205,17 +205,17 @@ Si el negocio pasa a ser una SL en el futuro, habrá que actualizar la razón so
 
 ### 7.3. Email corporativo
 
-`xavicid@gmail.com` funciona pero para una web profesional es más creíble un email `@todoflyer.es` (tipo `hola@todoflyer.es`). Se puede montar con Google Workspace (~6 €/mes) o con un alias gratuito en el panel del registrador que redirija a Gmail.
+`xavicid@gmail.com` funciona pero para una web profesional es más creíble un email `@todoflayer.es` (tipo `hola@todoflayer.es`). Se puede montar con Google Workspace (~6 €/mes) o con un alias gratuito en el panel del registrador que redirija a Gmail.
 
 ### 7.4. Marca de agua del flyer en plan free
 
-Los flyers generados en el plan gratuito llevan la marca "CREADO GRATUITAMENTE CON TODOFLYER.ES". Confirmar que esto es deseable (actualmente está en 3 idiomas en `src/i18n.js`).
+Los flyers generados en el plan gratuito llevan la marca "CREADO GRATUITAMENTE CON TODOFLAYER.ES". Confirmar que esto es deseable (actualmente está en 3 idiomas en `src/i18n.js`).
 
 ---
 
 ## 8. Checklist de verificación antes de anunciar públicamente
 
-Una vez configurado todo lo anterior, recorrer esta lista en **producción** (`https://todoflyer.es`):
+Una vez configurado todo lo anterior, recorrer esta lista en **producción** (`https://todoflayer.es`):
 
 ### Básicos
 - [ ] La home carga. Los 3 idiomas (ca/es/en) cambian al pulsar el botón del globo.
@@ -242,10 +242,10 @@ Una vez configurado todo lo anterior, recorrer esta lista en **producción** (`h
 - [ ] Disparar manualmente `customer.subscription.deleted` desde Stripe CLI: la fila pasa a `plan='free'`, `has_paid=false`, `plan_expires_at=null`.
 
 ### SEO / social
-- [ ] `https://todoflyer.es/robots.txt` carga y apunta al sitemap correcto.
-- [ ] `https://todoflyer.es/sitemap.xml` carga y lista las 4 URLs con el dominio nuevo.
+- [ ] `https://todoflayer.es/robots.txt` carga y apunta al sitemap correcto.
+- [ ] `https://todoflayer.es/sitemap.xml` carga y lista las 4 URLs con el domini nou.
 - [ ] Pegar la URL en un Tweet/WhatsApp: aparece preview con título, descripción e imagen.
-- [ ] Debug de OpenGraph: https://www.opengraph.xyz/ con la URL todoflyer.es.
+- [ ] Debug de OpenGraph: https://www.opengraph.xyz/ con la URL todoflayer.es.
 
 ### Legal / GDPR
 - [ ] La página `/#/legal/privacy` lista claramente: responsable, finalidades, base legal, derechos ARCO-POL, AEPD como autoridad.

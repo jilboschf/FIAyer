@@ -79,7 +79,7 @@ using (auth.uid() = user_id);
 ### 4) Stripe webhook
 Configura a Stripe Dashboard → Developers → Webhooks → Add endpoint:
 
-- Endpoint URL: `https://todoflyer.es/api/stripe-webhook`
+- Endpoint URL: `https://todoflayer.es/api/stripe-webhook`
 - Events to send:
   - `checkout.session.completed` — compra inicial (pack, pro, premium)
   - `customer.subscription.updated` — renovacions mensuals i canvis de pla
