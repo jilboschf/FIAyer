@@ -152,6 +152,7 @@ RULES:
 - Copy must be professional, persuasive and ready to print.
 - Keep all values in the requested language.
 - The title MUST be creative and marketable, never a repetition of the input.
+`;
 
   /* 4. Call the model ------------------------------------------------- */
   try {
