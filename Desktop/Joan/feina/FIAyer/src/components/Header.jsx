@@ -44,7 +44,7 @@ export default function Header({ isLoggedIn, credits, onLoginClick, onLogout, on
           fontSize: '1.25rem',
           letterSpacing: '-0.03em'
         }}>
-          <span style={{ color: 'var(--color-text-dark)' }}>TodoFlayer</span><span style={{ color: 'var(--color-primary)' }}>IA</span><span style={{ color: 'var(--color-text-dark)' }}>yer</span>
+          <span style={{ color: 'var(--color-text-dark)' }}>Todo</span><span style={{ color: 'var(--color-primary)' }}>Flyer</span>
         </span>
       </div>
 
