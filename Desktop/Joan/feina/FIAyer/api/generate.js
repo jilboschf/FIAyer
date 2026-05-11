@@ -1,9 +1,7 @@
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const LANG_INSTRUCTIONS = {
   ca: "Escriu TOT el contingut en català.",
@@ -81,8 +79,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return res.status(500).json({ error: 'Missing OPENAI_API_KEY on the server' });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'Missing GEMINI_API_KEY on the server' });
   }
 
   /* 1. Authentication ------------------------------------------------- */
@@ -160,30 +158,28 @@ RULES:
     let attempts = 0;
     const maxAttempts = 2;
 
+    const model = genai.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+    });
+
     while (attempts < maxAttempts && !safe) {
       attempts++;
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: fullPrompt,
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 500,
-      });
+      const response = await model.generateContent(fullPrompt);
 
-      const text = response.choices[0]?.message?.content?.trim();
+      const text = response.response.text()?.trim();
       if (!text) {
-        console.error('OpenAI returned empty content');
+        console.error('Gemini returned empty content');
         if (attempts < maxAttempts) continue;
         return res.status(502).json({ error: 'AI returned empty response' });
       }
 
+      // Gemini sometimes wraps JSON in markdown code fences — strip them
+      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
       let data;
       try {
-        data = JSON.parse(text);
+        data = JSON.parse(cleaned);
       } catch (parseErr) {
         console.error('JSON parse error. Raw model output:', text);
         if (attempts >= maxAttempts) {
