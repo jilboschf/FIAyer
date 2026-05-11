@@ -1,5 +1,7 @@
 {
   "name": "fiayer",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/api/generate", "destination": "/api/generate.js" },
     { "source": "/api/create-checkout-session", "destination": "/api/create-checkout-session.js" },
