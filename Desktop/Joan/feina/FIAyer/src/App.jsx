@@ -153,6 +153,7 @@ export default function App() {
   }, []);
 
   const handleGenerate = async (formData) => {
+    console.log('[App] handleGenerate called, formData:', formData);
     const langCode = (i18n.language || 'es').split('-')[0].toLowerCase();
 
     // 1. Require authentication BEFORE hitting the API.
@@ -161,7 +162,9 @@ export default function App() {
     //    the auth modal in a natural place.
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
+    console.log('[App] accessToken:', accessToken ? 'present' : 'missing');
     if (!accessToken) {
+      console.log('[App] no token → showing auth modal');
       // Preserve what the user already typed so it's still there after login.
       // Also save to sessionStorage so it survives a page reload (magic-link redirect).
       setInitialFormData(formData);

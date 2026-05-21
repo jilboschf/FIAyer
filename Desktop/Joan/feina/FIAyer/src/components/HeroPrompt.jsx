@@ -11,7 +11,9 @@ export default function HeroPrompt({ onGo }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('[HeroPrompt] handleSubmit called, prompt:', prompt.trim());
     if (!prompt.trim()) return;
+    console.log('[HeroPrompt] calling onGo');
     onGo({ prompt, templateId: 'custom' });
   };
 
