@@ -8,13 +8,14 @@ export default function HeroPrompt({ onGo }) {
   const templates = useTemplates();
   const [prompt, setPrompt] = useState('');
   const [focused, setFocused] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
-    console.log('[HeroPrompt] handleSubmit called, prompt:', prompt.trim(), 'onGo type:', typeof onGo);
-    if (!prompt.trim()) return;
-    console.log('[HeroPrompt] calling onGo');
+    if (!prompt.trim() || submitting) return;
+    setSubmitting(true);
     onGo({ prompt, templateId: 'custom' });
+    setTimeout(() => setSubmitting(false), 5000);
   };
 
   const handleTemplateClick = (tpl) => {
@@ -122,9 +123,9 @@ export default function HeroPrompt({ onGo }) {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!prompt.trim()}
+              disabled={!prompt.trim() || submitting}
               style={{
-                backgroundColor: prompt.trim() ? 'var(--color-primary)' : '#B0C8DE',
+                backgroundColor: prompt.trim() && !submitting ? 'var(--color-primary)' : '#B0C8DE',
                 color: '#fff',
                 padding: '1rem 1.5rem',
                 borderRadius: '16px',
@@ -134,11 +135,11 @@ export default function HeroPrompt({ onGo }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                cursor: prompt.trim() ? 'pointer' : 'not-allowed',
+                cursor: prompt.trim() && !submitting ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s ease',
               }}
             >
-              {t('hero.button')} <ArrowRight size={18} strokeWidth={2.5} />
+              {submitting ? '...' : <>{t('hero.button')} <ArrowRight size={18} strokeWidth={2.5} /></>}
             </button>
           </div>
         </form>

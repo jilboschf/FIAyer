@@ -159,10 +159,14 @@ export default function App() {
     // 1. Require authentication BEFORE hitting the API.
     let accessToken = null;
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('getSession timeout')), 3000)
+      );
+      const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]);
       accessToken = sessionData?.session?.access_token ?? null;
     } catch (sessionErr) {
-      console.error('[App] getSession error:', sessionErr);
+      console.error('[App] getSession error/timeout:', sessionErr.message);
     }
     console.log('[App] accessToken:', accessToken ? 'present' : 'missing');
     if (!accessToken) {
