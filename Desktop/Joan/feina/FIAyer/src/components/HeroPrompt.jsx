@@ -86,10 +86,10 @@ export default function HeroPrompt({ onGo }) {
             position: 'relative',
             backgroundColor: 'var(--color-bg-main)',
             borderRadius: '24px',
-            boxShadow: focused 
-              ? '0 20px 40px rgba(62, 134, 193, 0.15)' 
+            boxShadow: focused
+              ? '0 20px 40px rgba(62, 134, 193, 0.15)'
               : '0 10px 30px rgba(0, 0, 0, 0.08)',
-            border: `2px solid ${focused ? 'var(--color-primary)' : 'transparent'}`,
+            border: `2px solid ${focused ? 'var(--color-primary)' : 'rgba(62,134,193,0.25)'}`,
             padding: '0.5rem',
             display: 'flex',
             alignItems: 'center',
@@ -139,6 +139,13 @@ export default function HeroPrompt({ onGo }) {
             </button>
           </div>
         </form>
+
+        {/* Hint when input is empty */}
+        {!prompt.trim() && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-body)', marginTop: '-1.5rem', marginBottom: '2rem', opacity: 0.8 }}>
+            ↑ {t('hero.inputHint')}
+          </p>
+        )}
 
         {/* Template Shortcuts */}
         <div style={{ textAlign: 'center' }}>

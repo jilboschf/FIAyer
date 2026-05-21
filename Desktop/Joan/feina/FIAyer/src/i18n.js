@@ -21,6 +21,7 @@ const resources = {
       hero: {
         title: "Crea un flyer professional en segons.",
         inputPlaceholder: "De què va el teu esdeveniment o negoci?",
+        inputHint: "Escriu aquí el teu text i el botó s'activarà",
         button: "Generar Flyer",
         orTemplate: "O comença ràpidament amb una plantilla:",
         shortcuts: {
@@ -250,6 +251,7 @@ const resources = {
       hero: {
         title: "Crea un flyer profesional en segundos.",
         inputPlaceholder: "¿De qué trata tu evento o negocio?",
+        inputHint: "Escribe aquí tu texto y el botón se activará",
         button: "Generar Flyer",
         orTemplate: "O empieza rápidamente con una plantilla:",
         shortcuts: {
@@ -479,6 +481,7 @@ const resources = {
       hero: {
         title: "Create a professional flyer in seconds.",
         inputPlaceholder: "What is your event or business about?",
+        inputHint: "Type your text here and the button will activate",
         button: "Generate Flyer",
         orTemplate: "Or start quickly with a template:",
         shortcuts: {
