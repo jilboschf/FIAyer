@@ -10,8 +10,8 @@ export default function HeroPrompt({ onGo }) {
   const [focused, setFocused] = useState(false);
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('[HeroPrompt] handleSubmit called, prompt:', prompt.trim());
+    if (e) e.preventDefault();
+    console.log('[HeroPrompt] handleSubmit called, prompt:', prompt.trim(), 'onGo type:', typeof onGo);
     if (!prompt.trim()) return;
     console.log('[HeroPrompt] calling onGo');
     onGo({ prompt, templateId: 'custom' });
@@ -120,7 +120,8 @@ export default function HeroPrompt({ onGo }) {
             />
             
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={!prompt.trim()}
               style={{
                 backgroundColor: prompt.trim() ? 'var(--color-primary)' : '#B0C8DE',

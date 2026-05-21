@@ -157,16 +157,16 @@ export default function App() {
     const langCode = (i18n.language || 'es').split('-')[0].toLowerCase();
 
     // 1. Require authentication BEFORE hitting the API.
-    //    The backend now rejects anonymous requests to /api/generate, so we
-    //    gate on the client side to avoid a wasted round-trip and to show
-    //    the auth modal in a natural place.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token;
+    let accessToken = null;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      accessToken = sessionData?.session?.access_token ?? null;
+    } catch (sessionErr) {
+      console.error('[App] getSession error:', sessionErr);
+    }
     console.log('[App] accessToken:', accessToken ? 'present' : 'missing');
     if (!accessToken) {
       console.log('[App] no token → showing auth modal');
-      // Preserve what the user already typed so it's still there after login.
-      // Also save to sessionStorage so it survives a page reload (magic-link redirect).
       setInitialFormData(formData);
       try { sessionStorage.setItem('__pending_generation', JSON.stringify(formData)); } catch (_) {}
       setShowAuthModal(true);
