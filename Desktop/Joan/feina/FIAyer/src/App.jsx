@@ -58,6 +58,8 @@ export default function App() {
   
   // Stores initial data from PLG Hero
   const [initialFormData, setInitialFormData] = useState(null);
+  // Ref so onAuthStateChange can always call the latest handleGenerate without stale closures
+  const handleGenerateRef = React.useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -110,7 +112,19 @@ export default function App() {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(Boolean(session));
-      if (session) await refreshMe();
+      if (session) {
+        await refreshMe();
+        // Auto-trigger a generation that was blocked by auth
+        const pending = sessionStorage.getItem('__pending_generation');
+        if (pending) {
+          sessionStorage.removeItem('__pending_generation');
+          try {
+            const formData = JSON.parse(pending);
+            setInitialFormData(formData);
+            setTimeout(() => handleGenerateRef.current?.(formData), 200);
+          } catch (_) {}
+        }
+      }
       if (!session) {
         setCredits(0);
         setActivePlan('free');
@@ -149,7 +163,9 @@ export default function App() {
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
       // Preserve what the user already typed so it's still there after login.
+      // Also save to sessionStorage so it survives a page reload (magic-link redirect).
       setInitialFormData(formData);
+      try { sessionStorage.setItem('__pending_generation', JSON.stringify(formData)); } catch (_) {}
       setShowAuthModal(true);
       return;
     }
@@ -240,6 +256,9 @@ export default function App() {
       setIsLoading(false);
     }
   };
+
+  // Keep the ref pointing to the latest handleGenerate (avoids stale closure in onAuthStateChange)
+  handleGenerateRef.current = handleGenerate;
 
   // Legal pages take over the full screen. The cookie banner stays mounted
   // on top so users can still manage their consent from the legal views.

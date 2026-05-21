@@ -82,8 +82,8 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
   const loginWithTestAdmin = async () => {
     setStatus('sending');
     setErrorMsg('');
-    const testEmail = 'admin@todoflyer.test';
-    const testPassword = 'Admin1234';
+    const testEmail = 'jilboschf@gmail.com';
+    const testPassword = 'Admin1234!!';
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -251,29 +251,6 @@ export default function AuthModal({ isOpen, onClose, onLogin }) {
             </button>
           )}
 
-          <button
-            onClick={loginWithTestAdmin}
-            disabled={status === 'sending' || oauthLoading !== null}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              backgroundColor: '#0f766e',
-              color: '#ffffff',
-              padding: '0.875rem',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '0.9375rem',
-              cursor: status === 'sending' || oauthLoading ? 'not-allowed' : 'pointer',
-              border: '1px solid transparent',
-              transition: 'opacity 0.2s',
-              opacity: status === 'sending' || oauthLoading ? 0.6 : 1,
-            }}
-          >
-            {status === 'sending' ? t('auth.sending') : 'Entrar amb compte de prova'}
-          </button>
 
           {ANY_OAUTH_ENABLED && (
             <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0' }}>
