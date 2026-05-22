@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { useTemplates } from './TemplateSelector';
 import { useTranslation } from 'react-i18next';
@@ -9,13 +9,15 @@ export default function HeroPrompt({ onGo }) {
   const [prompt, setPrompt] = useState('');
   const [focused, setFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = (e) => {
-    if (e) e.preventDefault();
-    if (!prompt.trim() || submitting) return;
+    e.preventDefault();
+    if (!prompt.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     onGo({ prompt, templateId: 'custom' });
-    setTimeout(() => setSubmitting(false), 5000);
+    setTimeout(() => { submittingRef.current = false; setSubmitting(false); }, 6000);
   };
 
   const handleTemplateClick = (tpl) => {
@@ -121,8 +123,7 @@ export default function HeroPrompt({ onGo }) {
             />
             
             <button
-              type="button"
-              onClick={handleSubmit}
+              type="submit"
               disabled={!prompt.trim() || submitting}
               style={{
                 backgroundColor: prompt.trim() && !submitting ? 'var(--color-primary)' : '#B0C8DE',
