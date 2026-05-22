@@ -104,12 +104,8 @@ export default function App() {
 
   // Stripe Checkout return handling
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsLoggedIn(Boolean(data?.session));
-      if (data?.session) await refreshMe();
-    })();
-
+    // onAuthStateChange fires immediately with INITIAL_SESSION — no need for a
+    // separate getSession() call that would race for the same Supabase auth lock.
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(Boolean(session));
       if (session) {
