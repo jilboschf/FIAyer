@@ -60,6 +60,8 @@ export default function App() {
   const [initialFormData, setInitialFormData] = useState(null);
   // Ref so onAuthStateChange can always call the latest handleGenerate without stale closures
   const handleGenerateRef = React.useRef(null);
+  // Cache the access token so handleGenerate never needs to call getSession() and race the lock
+  const accessTokenRef = React.useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -86,10 +88,14 @@ export default function App() {
     }
   };
 
-  const refreshMe = async () => {
-    const { data } = await supabase.auth.getSession();
-    const accessToken = data?.session?.access_token;
+  const refreshMe = async (tokenOverride) => {
+    let accessToken = tokenOverride ?? accessTokenRef.current;
+    if (!accessToken) {
+      const { data } = await supabase.auth.getSession();
+      accessToken = data?.session?.access_token;
+    }
     if (!accessToken) return;
+    accessTokenRef.current = accessToken;
 
     const res = await fetch('/api/me', {
       method: 'GET',
@@ -109,7 +115,9 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(Boolean(session));
       if (session) {
-        await refreshMe();
+        // Store token in ref immediately — no extra getSession() needed
+        accessTokenRef.current = session.access_token;
+        await refreshMe(session.access_token);
         // Auto-trigger a generation that was blocked by auth
         const pending = sessionStorage.getItem('__pending_generation');
         if (pending) {
@@ -122,6 +130,7 @@ export default function App() {
         }
       }
       if (!session) {
+        accessTokenRef.current = null;
         setCredits(0);
         setActivePlan('free');
         setHasPaid(false);
@@ -152,18 +161,8 @@ export default function App() {
     console.log('[App] handleGenerate called, formData:', formData);
     const langCode = (i18n.language || 'es').split('-')[0].toLowerCase();
 
-    // 1. Require authentication BEFORE hitting the API.
-    let accessToken = null;
-    try {
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('getSession timeout')), 3000)
-      );
-      const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]);
-      accessToken = sessionData?.session?.access_token ?? null;
-    } catch (sessionErr) {
-      console.error('[App] getSession error/timeout:', sessionErr.message);
-    }
+    // 1. Require authentication — read from ref (updated by onAuthStateChange, no lock contention).
+    const accessToken = accessTokenRef.current;
     console.log('[App] accessToken:', accessToken ? 'present' : 'missing');
     if (!accessToken) {
       console.log('[App] no token → showing auth modal');
