@@ -156,16 +156,37 @@ RULES:
   try {
     let safe = null;
     let attempts = 0;
-    const maxAttempts = 2;
+    const maxAttempts = 3;
 
-    const model = genai.getGenerativeModel({
-      model: "gemini-2.5-flash",
+    // Try primary model first, fall back to gemini-2.0-flash on capacity errors
+    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    let modelIndex = 0;
+
+    const getModel = () => genai.getGenerativeModel({
+      model: MODELS[modelIndex],
       generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
     });
 
     while (attempts < maxAttempts && !safe) {
       attempts++;
-      const response = await model.generateContent(fullPrompt);
+      let response;
+      try {
+        response = await getModel().generateContent(fullPrompt);
+      } catch (apiErr) {
+        const is503 = apiErr?.status === 503 || /503|high demand|unavailable/i.test(apiErr?.message || '');
+        const is429 = apiErr?.status === 429 || /429|quota/i.test(apiErr?.message || '');
+        if ((is503 || is429) && modelIndex < MODELS.length - 1) {
+          modelIndex++;
+          console.warn(`Model ${MODELS[modelIndex - 1]} unavailable, switching to ${MODELS[modelIndex]}`);
+          attempts--; // don't count this as an attempt
+          continue;
+        }
+        if ((is503 || is429) && attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 1000 * attempts));
+          continue;
+        }
+        throw apiErr;
+      }
 
       const text = response.response.text()?.trim();
       if (!text) {
