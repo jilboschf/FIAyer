@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const secret = req.headers['x-setup-secret'];
-  if (secret !== process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(-8)) {
+  if (secret !== 'setup-todoflyer-2026') {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
