@@ -11,6 +11,7 @@
     "deploy": "npx vercel --prod"
   },
   "dependencies": {
+    "@google/genai": "^2.6.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.103.1",
     "@vercel/analytics": "^2.0.1",

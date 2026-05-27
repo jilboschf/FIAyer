@@ -1,40 +1,36 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
 // Tell Vercel this function can run up to 30 seconds
 export const config = { maxDuration: 30 };
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const genaiNew = process.env.GEMINI_API_KEY
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  : null;
 
-/* ─── Generate image with DALL-E 2, returns base64 data URL or null ─── */
+/* ─── Generate image with Imagen 3 (Google), returns base64 data URL or null ─── */
 async function generateFlyerImage(userPrompt, style) {
-  if (!openai) return null;
+  if (!genaiNew) return null;
   try {
     const imagePrompt =
-      `Professional marketing background photo for an event: "${userPrompt.slice(0, 120)}". ` +
-      `Style: ${style || 'modern'}. ` +
-      `High quality, vibrant colors, elegant composition. ` +
+      `Professional marketing background photo for: "${userPrompt.slice(0, 120)}". ` +
+      `Style: ${style || 'modern'}. Vibrant colors, elegant composition. ` +
       `NO text, NO words, NO letters, NO people faces. ` +
-      `Suitable as a decorative strip in a print flyer.`;
+      `Suitable as a decorative image strip in a print flyer.`;
 
-    const response = await openai.images.generate({
-      model: 'dall-e-3',
+    const response = await genaiNew.models.generateImages({
+      model: 'imagen-3.0-fast-generate-001',
       prompt: imagePrompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'standard',
+      config: { numberOfImages: 1, aspectRatio: '16:9' },
     });
-    const url = response.data[0].url;
 
-    // Download and encode as base64 so html2canvas can embed it (avoids CORS)
-    const imgRes = await fetch(url);
-    const buffer = await imgRes.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    return `data:image/png;base64,${base64}`;
+    const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
+    if (!imageBytes) throw new Error('No image bytes returned');
+    return `data:image/png;base64,${imageBytes}`;
   } catch (err) {
-    console.error('[generate] DALL-E error (non-fatal):', err.message);
+    console.error('[generate] Imagen error (non-fatal):', err.message);
     return null;
   }
 }
