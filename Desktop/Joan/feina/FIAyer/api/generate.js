@@ -1,10 +1,42 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
 // Tell Vercel this function can run up to 30 seconds
 export const config = { maxDuration: 30 };
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
+/* ─── Generate image with DALL-E 2, returns base64 data URL or null ─── */
+async function generateFlyerImage(userPrompt, style) {
+  if (!openai) return null;
+  try {
+    const imagePrompt =
+      `Professional marketing background photo for an event: "${userPrompt.slice(0, 120)}". ` +
+      `Style: ${style || 'modern'}. ` +
+      `High quality, vibrant colors, elegant composition. ` +
+      `NO text, NO words, NO letters, NO people faces. ` +
+      `Suitable as a decorative strip in a print flyer.`;
+
+    const response = await openai.images.generate({
+      model: 'dall-e-2',
+      prompt: imagePrompt,
+      n: 1,
+      size: '512x512',
+    });
+    const url = response.data[0].url;
+
+    // Download and encode as base64 so html2canvas can embed it (avoids CORS)
+    const imgRes = await fetch(url);
+    const buffer = await imgRes.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return `data:image/png;base64,${base64}`;
+  } catch (err) {
+    console.error('[generate] DALL-E error (non-fatal):', err.message);
+    return null;
+  }
+}
 
 // Wrap any promise with a hard timeout so Gemini never hangs the function
 function withTimeout(promise, ms, label) {
@@ -165,7 +197,10 @@ RULES:
 - The title MUST be creative and marketable, never a repetition of the input.
 `;
 
-  /* 4. Call the model ------------------------------------------------- */
+  /* 4. Start DALL-E image generation in parallel (non-blocking) ---------- */
+  const imagePromise = generateFlyerImage(prompt, style);
+
+  /* 5. Call the text model -------------------------------------------- */
   try {
     let safe = null;
     let attempts = 0;
@@ -271,6 +306,10 @@ RULES:
       console.error('[generate] All attempts exhausted without a valid response');
       return res.status(500).json({ error: 'AI generation failed after retries' });
     }
+
+    // Wait for DALL-E image (it was running in parallel — usually ready by now)
+    safe.imageUrl = await imagePromise;
+
     return res.status(200).json(safe);
   } catch (error) {
     console.error('[generate] Uncaught error:', error?.message, error?.status);

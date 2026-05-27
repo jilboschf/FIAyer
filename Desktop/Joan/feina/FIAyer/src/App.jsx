@@ -240,6 +240,7 @@ export default function App() {
           cta: generated.cta || '',
           style: formData.style || generated.style || 'modern',
           colorTheme: formData.colorTheme || generated.colorTheme || 'brand',
+          imageUrl: generated.imageUrl || null,
         },
       });
     } catch (err) {
