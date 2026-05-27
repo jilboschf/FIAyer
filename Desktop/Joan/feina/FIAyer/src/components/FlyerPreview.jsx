@@ -7,10 +7,10 @@ import { useToast } from '../lib/toast.jsx';
 
 /* ─── Color themes ─── */
 const themeMap = {
-  auto:    { bg: '#3E86C1', accent: '#ffffff', text: '#ffffff', bodyBg: '#F7F0EB' },
-  brand:   { bg: '#3E86C1', accent: '#ffffff', text: '#ffffff', bodyBg: '#F7F0EB' },
-  vibrant: { bg: '#E84C3D', accent: '#FFCA2C', text: '#ffffff', bodyBg: '#FFF9F0' },
-  pastel:  { bg: '#7EC8C8', accent: '#F4A261', text: '#061A12', bodyBg: '#F0FAF9' },
+  auto:    { bg: '#1A5F9E', bgGrad: '#3E86C1', accent: '#FFD166', text: '#ffffff', bodyBg: '#F7F0EB', dot: 'rgba(255,255,255,0.12)' },
+  brand:   { bg: '#1A5F9E', bgGrad: '#3E86C1', accent: '#FFD166', text: '#ffffff', bodyBg: '#F7F0EB', dot: 'rgba(255,255,255,0.12)' },
+  vibrant: { bg: '#C0392B', bgGrad: '#E84C3D', accent: '#FFCA2C', text: '#ffffff', bodyBg: '#FFF9F0', dot: 'rgba(255,202,44,0.15)' },
+  pastel:  { bg: '#5BA8A8', bgGrad: '#7EC8C8', accent: '#F4A261', text: '#ffffff', bodyBg: '#F0FAF9', dot: 'rgba(255,255,255,0.15)' },
 };
 
 const styleFont = {
@@ -393,42 +393,60 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
 
           {/* ── Banner ── */}
           <div style={{
-            backgroundColor: theme.bg,
-            padding: isElegant ? '2.5rem 2rem 2rem' : '3rem 2.25rem 2.5rem',
+            background: `linear-gradient(145deg, ${theme.bg} 0%, ${theme.bgGrad} 100%)`,
+            padding: isElegant ? '2.5rem 2rem 2.5rem' : '2.75rem 2.25rem 2.75rem',
             color: theme.text,
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            overflow: 'hidden',
           }}>
-            {/* Logo placeholder / Uploaded logo */}
+            {/* Top accent stripe */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0,
+              height: '5px',
+              background: theme.accent,
+            }} />
+
+            {/* Decorative circle — top right */}
+            <div style={{
+              position: 'absolute', top: '-40px', right: '-40px',
+              width: '160px', height: '160px',
+              borderRadius: '50%',
+              backgroundColor: theme.dot,
+              pointerEvents: 'none',
+            }} />
+            {/* Decorative circle — bottom left */}
+            <div style={{
+              position: 'absolute', bottom: '-30px', left: '-30px',
+              width: '110px', height: '110px',
+              borderRadius: '50%',
+              backgroundColor: theme.dot,
+              pointerEvents: 'none',
+            }} />
+
+            {/* Logo */}
             {uploadedLogo && (
               <div style={{
-                position: 'absolute',
-                top: '1.5rem',
-                right: '2rem',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                position: 'absolute', top: '1.5rem', right: '2rem',
+                width: '60px', height: '60px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 zIndex: 5
               }}>
-                <img 
-                  src={uploadedLogo} 
-                  alt="Logo" 
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
-                />
+                <img src={uploadedLogo} alt="Logo"
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
             )}
+
             {/* Script accent */}
             <span style={{
               fontFamily: '"Covered By Your Grace", cursive',
-              fontSize: '1.1rem',
+              fontSize: '1.2rem',
               color: theme.accent,
-              opacity: 0.9,
               display: 'block',
-              marginBottom: '0.5rem'
+              marginBottom: '0.4rem',
+              position: 'relative', zIndex: 1,
             }}>
               {t('preview.scriptAccent')}
             </span>
@@ -446,7 +464,8 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
                 letterSpacing: '-0.03em',
                 lineHeight: 1.1,
                 marginBottom: '0.875rem',
-                color: theme.text
+                color: theme.text,
+                position: 'relative', zIndex: 1,
               }}
             />
 
@@ -459,9 +478,10 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
               style={{
                 fontSize: '1rem',
                 fontWeight: font.sub,
-                opacity: 0.88,
+                opacity: 0.9,
                 lineHeight: 1.5,
-                color: theme.text
+                color: theme.text,
+                position: 'relative', zIndex: 1,
               }}
             />
           </div>
@@ -475,22 +495,30 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
             flexDirection: 'column'
           }}>
             {/* Bullet points */}
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: 'auto' }}>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: 'auto' }}>
               {content.points.map((pt, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <li key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px',
+                  padding: '0.6rem 0.875rem',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  border: `1px solid rgba(0,0,0,0.05)`,
+                }}>
                   <span style={{
-                    backgroundColor: theme.bg,
+                    background: `linear-gradient(135deg, ${theme.bg}, ${theme.bgGrad})`,
                     color: '#fff',
-                    borderRadius: '50%',
+                    borderRadius: '6px',
                     width: '22px',
                     height: '22px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
                     flexShrink: 0,
-                    marginTop: '1px'
+                    marginTop: '1px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                   }}>✓</span>
 
                   {editMode ? (
@@ -567,14 +595,21 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
 
             {/* CTA block */}
             <div style={{
-              marginTop: editMode ? '0.5rem' : '1.75rem',
-              backgroundColor: '#ffffff',
-              borderRadius: '8px',
-              padding: '1.5rem',
+              marginTop: editMode ? '0.5rem' : '1.5rem',
+              background: `linear-gradient(135deg, ${theme.bg} 0%, ${theme.bgGrad} 100%)`,
+              borderRadius: '10px',
+              padding: '1.25rem 1.5rem',
               textAlign: 'center',
-              border: `2px solid ${theme.bg}`,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+              boxShadow: `0 6px 20px rgba(0,0,0,0.18)`,
+              position: 'relative',
+              overflow: 'hidden',
             }}>
+              {/* Decorative dot inside CTA */}
+              <div style={{
+                position: 'absolute', top: '-15px', right: '-15px',
+                width: '70px', height: '70px', borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.1)', pointerEvents: 'none',
+              }} />
               <EditableText
                 tag="h2"
                 value={content.cta}
@@ -584,12 +619,13 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
                   fontFamily: 'Outfit, sans-serif',
                   fontSize: '1.2rem',
                   fontWeight: 800,
-                  color: theme.bg,
-                  letterSpacing: '-0.02em',
-                  marginBottom: '0.3rem'
+                  color: '#ffffff',
+                  letterSpacing: '-0.01em',
+                  marginBottom: '0.3rem',
+                  position: 'relative', zIndex: 1,
                 }}
               />
-              <p style={{ fontSize: '0.8rem', color: '#4D5155', fontWeight: 400 }}>
+              <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)', fontWeight: 500, position: 'relative', zIndex: 1 }}>
                 {t('preview.trustTag')}
               </p>
             </div>
