@@ -158,8 +158,8 @@ RULES:
     let attempts = 0;
     const maxAttempts = 3;
 
-    // Try primary model first, fall back to gemini-2.0-flash on capacity errors
-    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    // Try primary model first, fall back to gemini-2.5-flash on capacity errors
+    const MODELS = ["gemini-2.0-flash", "gemini-2.5-flash"];
     let modelIndex = 0;
 
     const getModel = () => genai.getGenerativeModel({
@@ -182,7 +182,8 @@ RULES:
           continue;
         }
         if ((is503 || is429) && attempts < maxAttempts) {
-          await new Promise(r => setTimeout(r, 1000 * attempts));
+          // Short delay only — avoid eating Vercel's function timeout budget
+          await new Promise(r => setTimeout(r, 300));
           continue;
         }
         throw apiErr;
