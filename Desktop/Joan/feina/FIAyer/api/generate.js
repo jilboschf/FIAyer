@@ -20,10 +20,11 @@ async function generateFlyerImage(userPrompt, style) {
       `Suitable as a decorative strip in a print flyer.`;
 
     const response = await openai.images.generate({
-      model: 'dall-e-2',
+      model: 'dall-e-3',
       prompt: imagePrompt,
       n: 1,
-      size: '512x512',
+      size: '1024x1024',
+      quality: 'standard',
     });
     const url = response.data[0].url;
 
