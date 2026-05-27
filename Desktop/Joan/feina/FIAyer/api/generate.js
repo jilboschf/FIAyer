@@ -191,21 +191,33 @@ RULES:
 
       const text = response.response.text()?.trim();
       if (!text) {
-        console.error('Gemini returned empty content');
+        console.error(`[generate] attempt ${attempts}: Gemini (${MODELS[modelIndex]}) returned empty content`);
         if (attempts < maxAttempts) continue;
-        return res.status(502).json({ error: 'AI returned empty response' });
+        return res.status(500).json({ error: 'AI returned empty response' });
       }
 
-      // Gemini sometimes wraps JSON in markdown code fences — strip them
-      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      // Extract JSON: strip markdown fences and any preamble text before the first '{'
+      let cleaned = text;
+      // Remove ```json ... ``` fences (even if there's preamble before them)
+      const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fenceMatch) {
+        cleaned = fenceMatch[1].trim();
+      } else {
+        // No fences — find the first '{' and last '}' to extract raw JSON
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+        }
+      }
 
       let data;
       try {
         data = JSON.parse(cleaned);
       } catch (parseErr) {
-        console.error('JSON parse error. Raw model output:', text);
+        console.error(`[generate] attempt ${attempts}: JSON parse error. Model: ${MODELS[modelIndex]}. Raw output:`, text);
         if (attempts >= maxAttempts) {
-          return res.status(502).json({ error: 'AI returned invalid JSON' });
+          return res.status(500).json({ error: 'AI returned invalid JSON' });
         }
         continue; // Retry
       }
@@ -234,9 +246,13 @@ RULES:
       safe = candidate;
     }
 
+    if (!safe) {
+      console.error('[generate] All attempts exhausted without a valid response');
+      return res.status(500).json({ error: 'AI generation failed after retries' });
+    }
     return res.status(200).json(safe);
   } catch (error) {
-    console.error('Generate error:', error);
+    console.error('[generate] Uncaught error:', error?.message, error?.status);
     return res.status(500).json({ error: "AI generation failed", details: error.message });
   }
 }
