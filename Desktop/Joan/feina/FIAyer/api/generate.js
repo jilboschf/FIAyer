@@ -1,7 +1,20 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
+// Tell Vercel this function can run up to 30 seconds
+export const config = { maxDuration: 30 };
+
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+// Wrap any promise with a hard timeout so Gemini never hangs the function
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${ms}ms (${label})`)), ms)
+    ),
+  ]);
+}
 
 const LANG_INSTRUCTIONS = {
   ca: "Escriu TOT el contingut en català.",
@@ -171,10 +184,18 @@ RULES:
       attempts++;
       let response;
       try {
-        response = await getModel().generateContent(fullPrompt);
+        response = await withTimeout(
+          getModel().generateContent(fullPrompt),
+          22000,
+          MODELS[modelIndex]
+        );
       } catch (apiErr) {
+        const isTimeout = /timeout/i.test(apiErr?.message || '');
         const is503 = apiErr?.status === 503 || /503|high demand|unavailable/i.test(apiErr?.message || '');
         const is429 = apiErr?.status === 429 || /429|quota/i.test(apiErr?.message || '');
+        if (isTimeout) {
+          console.error(`[generate] attempt ${attempts}: ${MODELS[modelIndex]} timed out after 22s`);
+        }
         if ((is503 || is429) && modelIndex < MODELS.length - 1) {
           modelIndex++;
           console.warn(`Model ${MODELS[modelIndex - 1]} unavailable, switching to ${MODELS[modelIndex]}`);
