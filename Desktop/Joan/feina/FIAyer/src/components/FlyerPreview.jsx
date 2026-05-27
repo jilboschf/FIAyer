@@ -97,6 +97,13 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
     }
   }, [data]);
 
+  // Cleanup uploaded logo URL — must be before any early return (Rules of Hooks)
+  useEffect(() => {
+    return () => {
+      if (uploadedLogo) URL.revokeObjectURL(uploadedLogo);
+    };
+  }, [uploadedLogo]);
+
   if (!data || !content) return <EmptyState />;
 
   const theme  = themeMap[data.colorTheme] ?? themeMap.auto;
@@ -220,12 +227,6 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
       });
     }
   };
-
-  useEffect(() => {
-    return () => {
-      if (uploadedLogo) URL.revokeObjectURL(uploadedLogo);
-    };
-  }, [uploadedLogo]);
 
   const triggerLogoUpload = () => {
     if (plan !== 'premium') {
