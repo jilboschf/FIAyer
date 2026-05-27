@@ -177,7 +177,7 @@ RULES:
 
     const getModel = () => genai.getGenerativeModel({
       model: MODELS[modelIndex],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
     });
 
     while (attempts < maxAttempts && !safe) {
