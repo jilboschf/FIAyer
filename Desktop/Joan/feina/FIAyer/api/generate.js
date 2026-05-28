@@ -6,13 +6,11 @@ import { getUserFromAuthHeader } from "./_supabase-admin.js";
 export const config = { maxDuration: 30 };
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const genaiNew = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  : null;
+const imageAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
-/* ─── Generate image with Imagen 3 (Google), returns base64 data URL or null ─── */
+/* ─── Generate image with Imagen 3 ─── */
 async function generateFlyerImage(userPrompt, style) {
-  if (!genaiNew) return null;
+  if (!process.env.GEMINI_API_KEY) return null;
   try {
     const imagePrompt =
       `Professional marketing background photo for: "${userPrompt.slice(0, 120)}". ` +
@@ -20,17 +18,22 @@ async function generateFlyerImage(userPrompt, style) {
       `NO text, NO words, NO letters, NO people faces. ` +
       `Suitable as a decorative image strip in a print flyer.`;
 
-    const response = await genaiNew.models.generateImages({
-      model: 'imagen-3.0-fast-generate-001',
-      prompt: imagePrompt,
-      config: { numberOfImages: 1, aspectRatio: '16:9' },
-    });
+    const response = await withTimeout(
+      imageAI.models.generateImages({
+        model: 'imagen-3.0-generate-002',
+        prompt: imagePrompt,
+        config: { numberOfImages: 1, aspectRatio: '4:3' },
+      }),
+      20000,
+      'imagen-3'
+    );
 
-    const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
-    if (!imageBytes) throw new Error('No image bytes returned');
-    return `data:image/png;base64,${imageBytes}`;
+    const img = response.generatedImages?.[0]?.image;
+    if (!img?.imageBytes) throw new Error('No image bytes in response');
+    const mime = img.mimeType || 'image/jpeg';
+    return `data:${mime};base64,${img.imageBytes}`;
   } catch (err) {
-    console.error('[generate] Imagen error (non-fatal):', err.message);
+    console.error('[generate] Image gen error (non-fatal):', err.message);
     return null;
   }
 }
@@ -194,7 +197,7 @@ RULES:
 - The title MUST be creative and marketable, never a repetition of the input.
 `;
 
-  /* 4. Start DALL-E image generation in parallel (non-blocking) ---------- */
+  /* 4. Start Imagen 3 image generation in parallel (non-blocking) -------- */
   const imagePromise = generateFlyerImage(prompt, style);
 
   /* 5. Call the text model -------------------------------------------- */
