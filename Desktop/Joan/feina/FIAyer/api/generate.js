@@ -6,36 +6,39 @@ export const config = { maxDuration: 30 };
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-/* ─── Generate image with Gemini Flash (same API key, no special access needed) ─── */
+/* ─── Fetch a relevant stock photo from Pexels (free API) ─── */
 async function generateFlyerImage(userPrompt, style) {
-  if (!process.env.GEMINI_API_KEY) return null;
+  if (!process.env.PEXELS_API_KEY) return null;
   try {
-    const imagePrompt =
-      `Create a vibrant marketing background image for: "${userPrompt.slice(0, 120)}". ` +
-      `Style: ${style || 'modern'}. Beautiful colors, elegant composition. ` +
-      `NO text, NO words, NO letters, NO people faces. Abstract or nature background.`;
+    // Use the first meaningful words as search query
+    const query = encodeURIComponent(userPrompt.slice(0, 60).trim());
 
-    const model = genai.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
-    });
-
-    const result = await withTimeout(
-      model.generateContent(imagePrompt),
-      20000,
-      'gemini-image'
+    const searchRes = await withTimeout(
+      fetch(
+        `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
+        { headers: { Authorization: process.env.PEXELS_API_KEY } }
+      ),
+      10000,
+      'pexels-search'
     );
+    if (!searchRes.ok) throw new Error(`Pexels search ${searchRes.status}`);
 
-    const parts = result.response.candidates?.[0]?.content?.parts || [];
-    for (const part of parts) {
-      if (part.inlineData?.data) {
-        const mime = part.inlineData.mimeType || 'image/png';
-        return `data:${mime};base64,${part.inlineData.data}`;
-      }
-    }
-    throw new Error('No image part in response');
+    const { photos } = await searchRes.json();
+    if (!photos?.length) throw new Error('No Pexels photos found');
+
+    // Pick first result, use medium-large size
+    const photoUrl = photos[0].src.large;
+
+    // Download server-side → base64 data URL (avoids CORS on export)
+    const imgRes = await withTimeout(fetch(photoUrl), 15000, 'pexels-img');
+    if (!imgRes.ok) throw new Error(`Photo fetch ${imgRes.status}`);
+
+    const buffer = await imgRes.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    const mime = imgRes.headers.get('content-type') || 'image/jpeg';
+    return `data:${mime};base64,${base64}`;
   } catch (err) {
-    console.error('[generate] Image gen error (non-fatal):', err.message);
+    console.error('[generate] Pexels error (non-fatal):', err.message);
     return null;
   }
 }
