@@ -1,37 +1,39 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GoogleGenAI } from "@google/genai";
 import { getUserFromAuthHeader } from "./_supabase-admin.js";
 
 // Tell Vercel this function can run up to 30 seconds
 export const config = { maxDuration: 30 };
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const imageAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
-/* ─── Generate image with Imagen 3 ─── */
+/* ─── Generate image with Gemini Flash (same API key, no special access needed) ─── */
 async function generateFlyerImage(userPrompt, style) {
   if (!process.env.GEMINI_API_KEY) return null;
   try {
     const imagePrompt =
-      `Professional marketing background photo for: "${userPrompt.slice(0, 120)}". ` +
-      `Style: ${style || 'modern'}. Vibrant colors, elegant composition. ` +
-      `NO text, NO words, NO letters, NO people faces. ` +
-      `Suitable as a decorative image strip in a print flyer.`;
+      `Create a vibrant marketing background image for: "${userPrompt.slice(0, 120)}". ` +
+      `Style: ${style || 'modern'}. Beautiful colors, elegant composition. ` +
+      `NO text, NO words, NO letters, NO people faces. Abstract or nature background.`;
 
-    const response = await withTimeout(
-      imageAI.models.generateImages({
-        model: 'imagen-3.0-generate-002',
-        prompt: imagePrompt,
-        config: { numberOfImages: 1, aspectRatio: '4:3' },
-      }),
+    const model = genai.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+    });
+
+    const result = await withTimeout(
+      model.generateContent(imagePrompt),
       20000,
-      'imagen-3'
+      'gemini-image'
     );
 
-    const img = response.generatedImages?.[0]?.image;
-    if (!img?.imageBytes) throw new Error('No image bytes in response');
-    const mime = img.mimeType || 'image/jpeg';
-    return `data:${mime};base64,${img.imageBytes}`;
+    const parts = result.response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        const mime = part.inlineData.mimeType || 'image/png';
+        return `data:${mime};base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error('No image part in response');
   } catch (err) {
     console.error('[generate] Image gen error (non-fatal):', err.message);
     return null;
@@ -307,14 +309,9 @@ RULES:
       return res.status(500).json({ error: 'AI generation failed after retries' });
     }
 
-    // Wait for Imagen 3 image (it was running in parallel — usually ready by now)
-    const imageResult = await imagePromise;
-    safe.imageUrl = imageResult;
-    if (!imageResult) {
-      console.error('[generate] imageUrl is null — image generation failed silently');
-    }
+    safe.imageUrl = await imagePromise;
 
-    return res.status(200).json({ ...safe, _imageDebug: imageResult ? 'ok' : 'null' });
+    return res.status(200).json(safe);
   } catch (error) {
     console.error('[generate] Uncaught error:', error?.message, error?.status);
     return res.status(500).json({ error: "AI generation failed", details: error.message });
