@@ -307,10 +307,14 @@ RULES:
       return res.status(500).json({ error: 'AI generation failed after retries' });
     }
 
-    // Wait for DALL-E image (it was running in parallel — usually ready by now)
-    safe.imageUrl = await imagePromise;
+    // Wait for Imagen 3 image (it was running in parallel — usually ready by now)
+    const imageResult = await imagePromise;
+    safe.imageUrl = imageResult;
+    if (!imageResult) {
+      console.error('[generate] imageUrl is null — image generation failed silently');
+    }
 
-    return res.status(200).json(safe);
+    return res.status(200).json({ ...safe, _imageDebug: imageResult ? 'ok' : 'null' });
   } catch (error) {
     console.error('[generate] Uncaught error:', error?.message, error?.status);
     return res.status(500).json({ error: "AI generation failed", details: error.message });
