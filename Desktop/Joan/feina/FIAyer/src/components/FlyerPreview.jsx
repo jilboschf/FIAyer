@@ -486,41 +486,41 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
             />
           </div>
 
-          {/* ── AI Image strip ── */}
-          {content.imageUrl && (
-            <div style={{
-              width: '100%',
-              height: '160px',
-              overflow: 'hidden',
-              position: 'relative',
-              flexShrink: 0,
-            }}>
+          {/* ── Body (photo fills entire section as background) ── */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+            {/* Photo background */}
+            {content.imageUrl && (
               <img
                 src={content.imageUrl}
                 alt=""
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center',
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover', objectPosition: 'center',
                   display: 'block',
                 }}
               />
-              {/* Subtle gradient overlay so it blends with the body below */}
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                height: '40px',
-                background: `linear-gradient(to bottom, transparent, ${theme.bodyBg})`,
-                pointerEvents: 'none',
-              }} />
-            </div>
-          )}
+            )}
+            {/* Overlay: white tint so text stays readable */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundColor: content.imageUrl
+                ? 'rgba(255,255,255,0.82)'
+                : theme.bodyBg,
+              pointerEvents: 'none',
+            }} />
 
-          {/* ── Body ── */}
+          {/* ── Body content (z-index above overlay) ── */}
           <div style={{
+            position: 'relative', zIndex: 1,
             flex: 1,
-            backgroundColor: theme.bodyBg,
-            padding: content.imageUrl ? '1.25rem 2.25rem 2rem' : '2rem 2.25rem',
+            padding: '2rem 2.25rem',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -659,6 +659,7 @@ export default function FlyerPreview({ data, isAuthenticated, hasPaid, credits, 
                 {t('preview.trustTag')}
               </p>
             </div>
+          </div>
           </div>
         </div>
       </div>
