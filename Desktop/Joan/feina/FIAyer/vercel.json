@@ -5,12 +5,19 @@
   "functions": {
     "api/generate.js": { "maxDuration": 30 }
   },
+  "crons": [
+    {
+      "path": "/api/ping-supabase?token=964143b29edb022eb75f7cb3a1ce9e8b862bcf5d7b9529ae4dd82163319dc694",
+      "schedule": "0 9 */3 * *"
+    }
+  ],
   "rewrites": [
     { "source": "/api/generate", "destination": "/api/generate.js" },
     { "source": "/api/create-checkout-session", "destination": "/api/create-checkout-session.js" },
     { "source": "/api/bootstrap", "destination": "/api/bootstrap.js" },
     { "source": "/api/me", "destination": "/api/me.js" },
     { "source": "/api/consume-credit", "destination": "/api/consume-credit.js" },
-    { "source": "/api/stripe-webhook", "destination": "/api/stripe-webhook.js" }
+    { "source": "/api/stripe-webhook", "destination": "/api/stripe-webhook.js" },
+    { "source": "/api/ping-supabase", "destination": "/api/ping-supabase.js" }
   ]
 }
